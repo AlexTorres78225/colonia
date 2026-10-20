@@ -6,3 +6,6 @@
 saves/
 diarios/
 .venv/
+
+# zip da versao web (gerado para o itch.io)
+*.zip

@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colônia — Web Demo</title>
+<style>
+  /* Cores do tema.py (LAB, ciclo 1) e da janela dos troféus */
+  :root {
+    --fundo: #0a2646;
+    --painel: #0f2e4f;
+    --painel-claro: #164270;
+    --grade: #123a63;
+    --borda: #2a9acc;
+    --destaque: #1d76ac;
+    --destaque-claro: #51c1f0;
+    --texto: #d8f1fb;
+    --texto-suave: #8fc3dd;
+    --aviso: #f2c94c;
+    --perigo: #8a2f3f;
+    --trofeu-fundo: #140f08;
+    --trofeu-painel: #2a2012;
+    --trofeu-texto: #f6ecd6;
+    --trofeu-suave: #c8b590;
+    --fonte: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body { background: var(--fundo); color: var(--texto); font-family: var(--fonte); font-size: 14px; }
+  button { font-family: inherit; cursor: pointer; border: none; }
+
+  #app { display: flex; height: 100%; min-width: 760px; min-height: 480px; }
+
+  /* ---------- barra lateral ---------- */
+  #barra { width: 200px; flex-shrink: 0; background: var(--painel); display: flex; flex-direction: column; padding: 0 10px; }
+  #barra h1 { font-size: 17px; text-align: center; margin: 18px 0 2px; }
+  #jogador { color: var(--texto-suave); font-size: 12px; text-align: center; margin-bottom: 12px; line-height: 1.4; }
+  .nav { display: block; width: 100%; text-align: left; background: var(--fundo); color: var(--texto);
+         font-size: 13px; padding: 8px 14px; margin: 2px 0; }
+  .nav:hover { background: var(--painel-claro); }
+  .nav.ativo { background: var(--ativo, var(--destaque)); }
+  .nav.trancado { color: var(--texto-suave); }
+  #barra .rodape-barra { margin-top: auto; padding-bottom: 6px; }
+  #barra .rodape-barra .nav { margin-top: 4px; }
+  #recomecar { background: var(--perigo); color: white; }
+  #recomecar:hover { background: #a33a4d; }
+  #versao { color: var(--texto-suave); font-size: 11px; text-align: center; margin-top: 6px; }
+
+  /* ---------- tela da placa ---------- */
+  #tela { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 8px 10px 6px; }
+  #topo { display: flex; align-items: center; gap: 6px; }
+  #topo h2 { font-size: 19px; margin: 0; margin-right: auto; white-space: nowrap; }
+  .botao { background: var(--painel-claro); color: white; padding: 4px 10px; font-size: 13px; }
+  .botao:hover { background: var(--borda); }
+  .botao.ligado { background: var(--destaque); }
+  #zoom-rotulo { color: var(--texto-suave); width: 44px; text-align: center; }
+  .rotulo-suave { color: var(--texto-suave); }
+  #membrana { color: var(--aviso); font-weight: bold; font-size: 15px; margin: 0 16px; }
+  #populacao { color: var(--texto-suave); font-size: 15px; }
+  #dica { color: var(--texto-suave); font-size: 11px; margin: 2px 2px 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #area { flex: 1; position: relative; min-height: 0; border: 1px solid var(--borda); }
+  #placa { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #rodape { display: flex; align-items: center; gap: 8px; margin-top: 6px; min-height: 30px; }
+  #adicionar { background: var(--destaque); }
+  #limpar { background: var(--perigo); }
+  #evento { margin-left: auto; color: var(--aviso); font-style: italic; font-size: 13px; text-align: right; }
+
+  /* ---------- menu do botão direito ---------- */
+  #menu { position: fixed; z-index: 20; background: var(--painel); border: 1px solid var(--borda);
+          min-width: 220px; padding: 4px 0; box-shadow: 0 6px 18px rgba(0,0,0,.5); }
+  #menu .titulo-menu { color: var(--texto-suave); padding: 5px 14px; font-size: 13px; border-bottom: 1px solid var(--grade); margin-bottom: 4px; }
+  #menu button { display: block; width: 100%; text-align: left; background: none; color: var(--texto); padding: 6px 14px; font-size: 13px; }
+  #menu button:hover { background: var(--destaque); }
+
+  /* ---------- janelas (avisos, inspeção, troféu) ---------- */
+  #cobertura { position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.55);
+               display: flex; align-items: center; justify-content: center; }
+  #janela { background: var(--trofeu-fundo); color: var(--trofeu-texto); border: 4px solid var(--cor-janela, var(--borda));
+            max-width: min(540px, 92vw); max-height: 92vh; overflow: auto; padding: 18px 28px 20px; text-align: center; }
+  #janela .emoji { font-size: 54px; line-height: 1.1; color: var(--cor-janela); }
+  #janela h3 { color: var(--cor-janela); font-size: 22px; margin: 4px 0 6px; }
+  #janela .subtitulo { font-weight: bold; margin: 0 0 12px; }
+  #janela .caixa { background: var(--trofeu-painel); padding: 12px 20px; text-align: left; white-space: pre-line; line-height: 1.5; }
+  #janela .frase { color: var(--cor-janela); font-size: 17px; font-weight: bold; margin: 14px 0 8px; }
+  #janela .botoes { display: flex; gap: 10px; justify-content: center; margin-top: 14px; }
+  #janela .botoes button { padding: 7px 22px; font-weight: bold; font-size: 14px; background: var(--cor-janela); color: var(--trofeu-fundo); }
+  #janela .botoes button.secundario { background: var(--trofeu-painel); color: var(--trofeu-texto); }
+
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="barra">
+    <h1>🦠 Colônia</h1>
+    <div id="jogador">🧑‍🔬 Cientista<br><span id="recorde">Web Demo</span></div>
+    <nav id="navegacao"></nav>
+    <div class="rodape-barra">
+      <button class="nav" id="som">🔊  Som: ligado</button>
+      <button class="nav" id="recomecar">🔄  Recomeçar demo</button>
+      <div id="versao">Web Demo v1.0 • Projeto 018</div>
+    </div>
+  </aside>
+
+  <main id="tela">
+    <div id="topo">
+      <h2>Colônia — Placa de Cultura</h2>
+      <button class="botao" id="velocidade">⏩ 1×</button>
+      <button class="botao" id="pausa">⏸ Pausar</button>
+      <span class="rotulo-suave" style="margin-left:10px">🔍 Zoom</span>
+      <button class="botao" id="zoom-menos">−</button>
+      <span id="zoom-rotulo">100%</span>
+      <button class="botao" id="zoom-mais">+</button>
+      <span id="membrana">⬡ 0</span>
+      <span id="populacao">População: 0</span>
+    </div>
+    <div id="dica">Arraste com o mouse  •  Botão direito: menu  •  Roda: zoom  •  Setas: andar pelo mapa  •  Espaço: pausar  •  Clique no minimapa para ir até lá</div>
+    <div id="area"><canvas id="placa"></canvas></div>
+    <div id="rodape">
+      <button class="botao" id="adicionar">+ Organismo (1 ⬡)</button>
+      <button class="botao" id="limpar">Limpar Placa</button>
+      <span id="evento"></span>
+    </div>
+  </main>
+</div>
+
+<div id="menu" hidden></div>
+<div id="cobertura" hidden><div id="janela"></div></div>
+
+<script src="jogo.js"></script>
+</body>
+</html>
