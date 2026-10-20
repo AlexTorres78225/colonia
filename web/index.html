@@ -86,6 +86,22 @@
   #janela .botoes button { padding: 7px 22px; font-weight: bold; font-size: 14px; background: var(--cor-janela); color: var(--trofeu-fundo); }
   #janela .botoes button.secundario { background: var(--trofeu-painel); color: var(--trofeu-texto); }
 
+  .botao, #membrana, #populacao { white-space: nowrap; }
+  #evento { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+
+  /* janela pequena (o itch.io usa 960 × 600): barra lateral mais estreita e topo compacto */
+  @media (max-width: 1100px) {
+    #barra { width: 170px; padding: 0 8px; }
+    .nav { padding: 7px 10px; font-size: 12px; }
+    #topo { gap: 4px; }
+    #topo h2 { font-size: 16px; }
+    #topo h2 .longo, .rotulo-suave.zoom-texto { display: none; }
+    .botao { padding: 4px 8px; }
+    #membrana { margin: 0 8px; font-size: 14px; }
+    #populacao { font-size: 13px; }
+    #zoom-rotulo { width: 40px; font-size: 12px; }
+  }
+
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -104,10 +120,10 @@
 
   <main id="tela">
     <div id="topo">
-      <h2>Colônia — Placa de Cultura</h2>
+      <h2><span class="longo">Colônia — </span>Placa de Cultura</h2>
       <button class="botao" id="velocidade">⏩ 1×</button>
       <button class="botao" id="pausa">⏸ Pausar</button>
-      <span class="rotulo-suave" style="margin-left:10px">🔍 Zoom</span>
+      <span class="rotulo-suave zoom-texto" style="margin-left:10px">🔍 Zoom</span>
       <button class="botao" id="zoom-menos">−</button>
       <span id="zoom-rotulo">100%</span>
       <button class="botao" id="zoom-mais">+</button>
