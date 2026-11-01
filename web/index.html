@@ -29,7 +29,7 @@
   body { background: var(--fundo); color: var(--texto); font-family: var(--fonte); font-size: 14px; }
   button { font-family: inherit; cursor: pointer; border: none; }
 
-  #app { display: flex; height: 100%; min-width: 760px; min-height: 480px; }
+  #app { display: flex; height: 100%; min-width: 760px; }
 
   /* ---------- barra lateral ---------- */
   #barra { width: 200px; flex-shrink: 0; background: var(--painel); display: flex; flex-direction: column; padding: 0 10px; }
@@ -100,6 +100,16 @@
     #membrana { margin: 0 8px; font-size: 14px; }
     #populacao { font-size: 13px; }
     #zoom-rotulo { width: 40px; font-size: 12px; }
+  }
+
+  /* tela baixa (celular deitado): barra lateral rola, e some o que não cabe */
+  @media (max-height: 500px) {
+    #barra { overflow-y: auto; }
+    #barra h1 { margin: 8px 0 0; font-size: 15px; }
+    #jogador { margin-bottom: 6px; }
+    .nav { padding: 5px 10px; }
+    #dica { display: none; }
+    #rodape { margin-top: 4px; }
   }
 
   [hidden] { display: none !important; }
