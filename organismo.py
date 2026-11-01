@@ -2,7 +2,7 @@ import random
 import math
 import time
 from evolucao_dados import dados_completos_estagio, tamanho_do_estagio
-from comportamento import modificadores
+from comportamento import modificadores, eh_ia
 from camera import CAMERA_PADRAO
 import recursos
 
@@ -17,7 +17,9 @@ DURACAO_INFECCAO_VIRUS = 1500   # quadros: uns 60 segundos no 1×
 ESTILO_SELOS = {
     "?": ("#f2c94c", "#1a1a1a"),
     "!": ("#e04848", "#ffffff"),
+    "✦": ("#3d8bfd", "#ffffff"),   # IA (Guardião, Predador, Simbionte): azul, para não confundir com o Infectado
 }
+COR_IA = "#3d8bfd"
 
 
 class Organismo:
@@ -71,6 +73,8 @@ class Organismo:
     def selo(self):
         if self.novo_ate > time.time():
             return "?"
+        if eh_ia(self.comportamento):
+            return "✦"
         if self.sofreu_interferencia():
             return "!"
         return None

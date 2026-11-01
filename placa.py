@@ -8,7 +8,7 @@ import recursos
 import sons
 import tema
 import bau_dados
-from organismo import Organismo, VARIANTE_VIRUS, DURACAO_INFECCAO_VIRUS
+from organismo import Organismo, VARIANTE_VIRUS, DURACAO_INFECCAO_VIRUS, COR_IA
 from camera import Camera, PASSO_ZOOM, ZOOM_MAXIMO
 from comportamento import modificadores, escolher_comportamento_aleatorio, eh_natural, eh_ia
 from habilidades import gerar_habilidades_iniciais
@@ -359,7 +359,12 @@ class PlacaBase(tk.Frame):
             px = x0 + organismo.x * escala
             py = y0 + organismo.y * escala
             r = max(1.5, organismo.raio() * escala * 1.5)
-            cor = "#e04848" if organismo.sofreu_interferencia() else cor_do_estagio(organismo.estagio)
+            if eh_ia(organismo.comportamento):
+                cor = COR_IA
+            elif organismo.sofreu_interferencia():
+                cor = "#e04848"
+            else:
+                cor = cor_do_estagio(organismo.estagio)
             self.canvas.create_oval(px - r, py - r, px + r, py + r, fill=cor, outline="", tags="minimapa")
         vx0 = x0 + self.camera.x * escala
         vy0 = y0 + self.camera.y * escala
