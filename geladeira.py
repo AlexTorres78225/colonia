@@ -138,7 +138,9 @@ class TelaGeladeira(tk.Frame):
                   bg=tema.LAB["painel_claro"], fg="white", relief="flat").pack(fill="x", padx=20, pady=6)
 
     def _carregar_slot(self, numero_slot, janela):
-        if not janelas.askyesno("Confirmar", "Isso substituirá a colônia atual pela do slot. Continuar?"):
+        if not janelas.askyesno("Confirmar", "Isso substituirá a colônia atual pela do slot.\n"
+                                             "A Membrana também volta ao valor que tinha quando você salvou. "
+                                             "Continuar?"):
             return
         placa_vazia = not persistencia.listar_organismos("placa")
         persistencia.carregar_slot_geladeira(numero_slot)

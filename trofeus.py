@@ -73,10 +73,12 @@ class TelaTrofeus(tk.Frame):
                      fg=COR_TEXTO if feito else COR_TEXTO_SUAVE, bg=COR_PAINEL,
                      font=("Segoe UI", 10)).pack(anchor="w", pady=1)
         tk.Label(self.lista, text=f"A cada troféu o jogo reinicia num ciclo novo, com cores novas: a colônia e a "
-                                  f"Geladeira recomeçam.\nVocê leva: upgrades do Baú, frascos, conquistas, troféus, o "
+                                  f"Geladeira recomeçam.\nVocê leva: upgrades do Baú, até "
+                                  f"{bau_dados.FRASCOS_QUE_PASSAM} de cada frasco, conquistas, troféus, o "
                                   f"Manual e {bau_dados.MEMBRANA_INICIAL} ⬡ + "
                                   f"{round(bau_dados.PARTE_DA_MEMBRANA_QUE_FICA * 100)}% da Membrana que sobrou.\n"
-                                  "A reprodução fica um pouco mais difícil a cada ciclo.",
+                                  "A reprodução fica mais difícil a cada ciclo, e cada troféu acrescenta um ☣️ Núcleo "
+                                  "Corrompido (até 4).",
                  fg=COR_TEXTO_SUAVE, bg=COR_PAINEL, font=("Segoe UI", 9), justify="left").pack(anchor="w", pady=(8, 0))
 
     def atualizar_ao_exibir(self):

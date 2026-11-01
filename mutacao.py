@@ -176,7 +176,7 @@ class TelaMutacao(PlacaBase):
             opcoes.append((texto, self._ao_clicar_organismo))
         opcoes += [
             ("↩️  Soltar na placa", self._soltar),
-            ("💥  Destruir", self._destruir),
+            self._opcao_destruir(organismo),
         ]
         return opcoes
 

@@ -9,7 +9,8 @@ import tema
 import bau_dados
 from habilidades import herdar_habilidades, gerar_habilidades_iniciais
 from evolucao_dados import TOTAL_ESTAGIOS, nome_do_estagio
-from placa import PlacaBase
+from placa import PlacaBase, LARGURA_MINIMAPA, LARGURA_MUNDO
+from nucleo import GerenciadorNucleos
 
 ORGANISMOS_DA_CONTA_NOVA = 6
 
@@ -21,9 +22,15 @@ class TelaSimulacao(PlacaBase):
             "Espaço: pausar  •  F11: tela cheia  •  Clique no minimapa para ir até lá")
     TEXTO_VAZIO = "Placa vazia nesta região.\nClique em “+ Organismo” ou use o minimapa para procurar."
 
+    def __init__(self, master, controlador):
+        # os Núcleos Corrompidos (V2) só existem aqui na placa; precisam existir antes do primeiro desenho
+        self.nucleos = GerenciadorNucleos(self)
+        super().__init__(master, controlador)
+
     def _montar_botoes(self, rodape):
-        self._botao(rodape, f"+ Organismo ({bau_dados.CUSTO_ORGANISMO} ⬡)", self._adicionar_organismo_aleatorio,
-                    self.COR_BOTAO_LIGADO, padx=10).pack(side="left")
+        self.botao_adicionar = self._botao(rodape, "+ Organismo", self._adicionar_organismo_aleatorio,
+                                           self.COR_BOTAO_LIGADO, padx=10)
+        self.botao_adicionar.pack(side="left")
         # Nasce: um botão com o desenho de cada estágio; a Cultura Avançada (Baú) destranca os mais altos
         self.area_nasce = tk.Frame(rodape, bg=self.COR_FUNDO)
         self.area_nasce.pack(side="left", padx=(8, 0))
@@ -82,6 +89,7 @@ class TelaSimulacao(PlacaBase):
         """Chamado pelo main.py depois de um troféu: a placa recomeça do zero."""
         self.camera.centralizar_em(self.camera.largura_mundo / 2, self.camera.altura_mundo / 2)
         self._especies_novas.clear()
+        self.nucleos.recomecar()
         self._semear_organismos_iniciais()
         self._atualizar_membrana()
         self._atualizar_barra_frascos()
@@ -90,18 +98,23 @@ class TelaSimulacao(PlacaBase):
         if persistencia.contar_organismos() >= bau_dados.limite_populacao():
             self._mostrar_evento("Colônia no limite — não cabe mais ninguém")
             return
-        sem_saida = bau_dados.saldo() < bau_dados.CUSTO_ORGANISMO and not self.organismos
-        if not sem_saida:
-            if not persistencia.gastar_membrana(bau_dados.CUSTO_ORGANISMO):
-                self._mostrar_evento("Sem Membrana! Clique num organismo da placa para ganhar +1 ⬡")
-                return
+        custo = bau_dados.custo_organismo()   # o estágio que nasce: estágio 4 custa 4 ⬡
+        sem_saida = bau_dados.saldo() < custo and not self.organismos
+        if sem_saida:
+            # de graça, mas só do estágio 1 (senão seria um jeito de ganhar organismos grandes sem pagar)
+            self._criar_e_mostrar(estagio=1)
+            self._mostrar_evento("Este saiu de graça: sem Membrana e com a placa vazia 🤝")
+            return
+        if not persistencia.gastar_membrana(custo):
+            self._mostrar_evento(f"Membrana insuficiente: este organismo custa {custo} ⬡ "
+                                 "(escolha um estágio menor em “Nasce”)")
+            return
         # Cultura Avançada (Baú) libera estágios mais altos; o botão 🧫 Nasce escolhe qual
         self._criar_e_mostrar(estagio=bau_dados.estagio_gerado())
         self._atualizar_membrana()
-        if sem_saida:
-            self._mostrar_evento("Este saiu de graça: sem Membrana e com a placa vazia 🤝")
 
     def _atualizar_botoes_nasce(self):
+        self.botao_adicionar.config(text=f"+ Organismo ({bau_dados.custo_organismo()} ⬡)")
         maximo = bau_dados.estagio_maximo_de_nascimento()
         escolhido = bau_dados.estagio_gerado()
         for estagio, botao in self.botoes_nasce.items():
@@ -126,11 +139,12 @@ class TelaSimulacao(PlacaBase):
         bau_dados.escolher_estagio_de_nascimento(estagio)
         self._atualizar_botoes_nasce()
         sons.tocar(sons.SOM_CLIQUE)
-        self._mostrar_evento(f"Organismos novos vão nascer no estágio {estagio}: {nome_do_estagio(estagio)}")
+        self._mostrar_evento(f"Organismos novos vão nascer no estágio {estagio}: {nome_do_estagio(estagio)} "
+                             f"({estagio} ⬡ cada)")
 
     def _dica_nascimento(self, estagio):
         if estagio <= bau_dados.estagio_maximo_de_nascimento():
-            self._mostrar_evento(f"Nascer no estágio {estagio}: {nome_do_estagio(estagio)}")
+            self._mostrar_evento(f"Nascer no estágio {estagio}: {nome_do_estagio(estagio)} ({estagio} ⬡)")
         else:
             self._mostrar_evento(f"🔒 Estágio {estagio} — libere com a 🧬 Cultura Avançada (Baú)")
 
@@ -140,6 +154,7 @@ class TelaSimulacao(PlacaBase):
 
     def _ao_clicar_organismo(self, organismo):
         # sem Membrana nenhuma, clicar num organismo "brota" +1 ⬡ (assim o jogador nunca fica preso)
+        # (só com 0 ⬡: se fosse "menos que o custo", dava para clicar até pagar um organismo grande)
         if bau_dados.saldo() < bau_dados.CUSTO_ORGANISMO:
             ganho = bau_dados.ganhar(bau_dados.GANHO_CLIQUE_SEM_SALDO)
             self._mostrar_ganho(organismo.x, organismo.y - organismo.raio(), ganho)
@@ -156,6 +171,52 @@ class TelaSimulacao(PlacaBase):
             self.organismos = []
             self._atualizar_rotulo_populacao()
             self._atualizar_extras()
+
+    # ---------- Núcleos Corrompidos (V2) ----------
+
+    def _carregar_organismos(self):
+        self.nucleos.carregar()
+        super()._carregar_organismos()
+
+    def _redesenhar_tudo_do_zero(self):
+        super()._redesenhar_tudo_do_zero()
+        self.nucleos.desenhar()
+
+    def _atualizar_todos_na_tela(self):
+        super()._atualizar_todos_na_tela()
+        self.nucleos.desenhar()
+
+    def _desenhar_minimapa(self):
+        super()._desenhar_minimapa()
+        x0, y0, _x1, _y1 = self._area_minimapa()
+        self.nucleos.desenhar_no_minimapa(x0, y0, LARGURA_MINIMAPA / LARGURA_MUNDO)
+
+    def _passo_da_simulacao(self, desenhar):
+        super()._passo_da_simulacao(desenhar)
+        self.nucleos.passo()
+        if desenhar:
+            self.nucleos.desenhar()
+
+    def _nucleo_em(self, x, y):
+        return self.nucleos.nucleo_em(x, y)
+
+    def _problema_no_nucleo(self, chave, nucleo):
+        return self.nucleos.problema_para(chave, nucleo)
+
+    def _frasco_pelicula(self, nucleo):
+        return self.nucleos.usar_pelicula(nucleo)
+
+    def _frasco_globulos(self, nucleo):
+        return self.nucleos.usar_globulos(nucleo)
+
+    def _frasco_seringa(self, nucleo):
+        return self.nucleos.usar_seringa(nucleo)
+
+    # ---------- fusões ----------
+
+    def _pode_colidir(self, organismo):
+        # V2: Infectados ficam doentes demais para se fundir (é assim que os vírus atrasam a colônia)
+        return organismo.tipo != "fusao" and organismo.comportamento != "Infectado"
 
     def _resolver_interacao(self, organismo_a, organismo_b):
         """Na placa só acontece fusão espontânea (merge): dois iguais viram um do estágio seguinte."""
@@ -200,7 +261,7 @@ class TelaSimulacao(PlacaBase):
             opcoes.append(("🧬  Coletar para a Área de Mutação", self._coletar_mutacao))
         opcoes += [
             ("☣️  Infectar", self._infectar),
-            ("💥  Destruir", self._destruir),
+            self._opcao_destruir(organismo),
         ]
         return opcoes
 

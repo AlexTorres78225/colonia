@@ -11,6 +11,7 @@ from placa import PlacaBase
 
 RECARGA_APOS_REPRODUZIR = 150
 RECARGA_APOS_TENTATIVA = 25
+PENALIDADE_POR_ESTAGIO = 0.02   # organismos maiores se reproduzem mais devagar
 
 
 def _habilidades_de(organismo):
@@ -61,8 +62,10 @@ class TelaFusao(PlacaBase):
         chance_b = modificadores(organismo_b.comportamento)["chance_reproducao"]
         if chance_a == 0 or chance_b == 0:
             return  # Infectado, Mutação e Predador não se reproduzem
-        # Catalisador (Baú) soma chance; cada troféu tira um pouco (o jogo fica mais difícil a cada ciclo)
-        chance_reproducao = (chance_a + chance_b) / 2 + bau_dados.bonus_reproducao() - bau_dados.penalidade_reproducao()
+        # Catalisador (Baú) soma chance; cada troféu tira um pouco (o jogo fica mais difícil a cada ciclo);
+        # e quanto maior o estágio, mais devagar ele se reproduz (-2% por estágio, como na natureza)
+        chance_reproducao = ((chance_a + chance_b) / 2 + bau_dados.bonus_reproducao()
+                             - bau_dados.penalidade_reproducao() - PENALIDADE_POR_ESTAGIO * (organismo_a.estagio - 1))
         chance_reproducao = max(0.05, min(0.95, chance_reproducao))
         espera = round(RECARGA_APOS_REPRODUZIR * bau_dados.fator_recarga())
 
@@ -99,7 +102,7 @@ class TelaFusao(PlacaBase):
             ("🔍  Inspecionar", self._inspecionar),
             ("↩️  Soltar na placa", self._soltar),
             ("☣️  Infectar", self._infectar),
-            ("💥  Destruir", self._destruir),
+            self._opcao_destruir(organismo),
         ]
 
     def _soltar(self, organismo):

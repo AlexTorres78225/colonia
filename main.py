@@ -169,7 +169,7 @@ class App(tk.Tk):
         self._mostrar_comemoracao(dados, ja_tinha + 1, ultimo, levou)
 
         if not ultimo:
-            persistencia.recomecar_ciclo(bau_dados.MEMBRANA_INICIAL, levou)
+            persistencia.recomecar_ciclo(bau_dados.MEMBRANA_INICIAL, levou, bau_dados.FRASCOS_QUE_PASSAM)
             persistencia.adicionar_entrada_diario(f"🌱 Começou o ciclo {ja_tinha + 2}. Boa sorte!")
         # reabre o jogo já com as cores do ciclo novo
         self.reiniciar = True
@@ -210,12 +210,13 @@ class App(tk.Tk):
                       "",
                       "Você leva com você:",
                       "   ⬆️ todos os upgrades do Baú",
-                      "   🧪 os frascos que você comprou",
+                      f"   🧪 até {bau_dados.FRASCOS_QUE_PASSAM} de cada frasco que você comprou",
                       f"   ⬡ {bau_dados.MEMBRANA_INICIAL} de Membrana + {levou} que sobraram deste ciclo",
                       f"   📖 o Manual (o ciclo {numero} fica guardado nele)",
                       "   🏅 conquistas e 🏆 troféus",
                       "",
-                      "A reprodução fica um pouco mais difícil a cada ciclo."]
+                      "A reprodução fica mais difícil a cada ciclo,",
+                      f"e agora até {min(4, numero)} ☣️ Núcleo(s) Corrompido(s) podem aparecer na placa."]
             frase_final, texto_botao = "🍀 Boa sorte, cientista!", f"Começar o ciclo {numero + 1} ▶"
         tk.Label(caixa, text="\n".join(linhas), bg=painel, fg=texto, font=("Segoe UI", 10),
                  justify="left").pack(anchor="w")

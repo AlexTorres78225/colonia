@@ -72,7 +72,8 @@ class TelaBau(tk.Frame):
         saldo = bau_dados.saldo()
         self.rotulo_saldo.config(text=f"⬡ {saldo} Membrana")
 
-        self._titulo_secao("🟦 Upgrades permanentes (até 3 níveis)", 0)
+        self._titulo_secao("🟦 Upgrades permanentes (até 5 níveis • o 4º pede o troféu de Prata e o 5º, o de Ouro)",
+                           0)
         upgrades = tk.Frame(self.area, bg=COR_FUNDO)
         upgrades.grid(row=1, column=0, sticky="w")
         for indice, dados in enumerate(bau_dados.UPGRADES):
@@ -124,9 +125,13 @@ class TelaBau(tk.Frame):
         tk.Label(cartao, text=efeito, fg=COR_TEXTO, bg=cor, font=("Segoe UI", 8),
                  justify="left").pack(anchor="w", padx=8, pady=(2, 0))
 
+        trancado = None if maximo else bau_dados.nivel_trancado(nivel + 1)
         if maximo:
             tk.Label(cartao, text="✅ Máximo", fg="#7fe0b0", bg=cor,
                      font=("Segoe UI", 9, "bold")).pack(side="bottom", pady=6)
+        elif trancado:
+            tk.Label(cartao, text=trancado, fg="#c9a24c", bg=cor, font=("Segoe UI", 8, "bold"),
+                     wraplength=160).pack(side="bottom", pady=6)
         else:
             preco = bau_dados.preco_do_proximo_nivel(dados["chave"])
             pode = saldo >= preco

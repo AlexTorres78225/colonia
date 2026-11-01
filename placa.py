@@ -8,7 +8,7 @@ import recursos
 import sons
 import tema
 import bau_dados
-from organismo import Organismo
+from organismo import Organismo, VARIANTE_VIRUS, DURACAO_INFECCAO_VIRUS
 from camera import Camera, PASSO_ZOOM, ZOOM_MAXIMO
 from comportamento import modificadores, escolher_comportamento_aleatorio, eh_natural, eh_ia
 from habilidades import gerar_habilidades_iniciais
@@ -475,9 +475,14 @@ class PlacaBase(tk.Frame):
     def _mover_todos(self, grade, desenhar=True):
         # Feromônio (upgrade do Baú): só na placa, onde acontecem as fusões
         alcance_feromonio, forca_feromonio = bau_dados.feromonio() if self.LOCAL == "placa" else (0, 0.0)
+        curados = []
         for organismo in self.organismos:
             if organismo.recarga > 0:
                 organismo.recarga -= 1
+            if organismo.doenca > 0:
+                organismo.doenca -= 1
+                if organismo.doenca == 0 and organismo.tem_virus_do_nucleo():
+                    curados.append(organismo)
             if organismo.recarga_contagio > 0:
                 organismo.recarga_contagio -= 1
             if organismo.recarga_caca > 0:
@@ -498,6 +503,19 @@ class PlacaBase(tk.Frame):
             if desenhar:
                 organismo.atualizar_no_canvas(self.canvas, self.camera)
             self.comportamentos_vistos.add(organismo.comportamento)
+        for organismo in curados:
+            self._curar(organismo)
+        if curados:
+            self._mostrar_evento(f"🩹 {len(curados)} organismo(s) venceram o vírus do Núcleo sozinhos")
+
+    def _curar(self, organismo):
+        """Tira a infecção: o organismo volta a ter um comportamento natural."""
+        organismo.comportamento = escolher_comportamento_aleatorio()
+        organismo.variante = ""
+        organismo.doenca = 0
+        persistencia.atualizar_comportamento(organismo.id_banco, organismo.comportamento)
+        persistencia.atualizar_variante(organismo.id_banco, "")
+        organismo.redesenhar(self.canvas, self.camera)
 
     def _salvar_posicoes(self):
         lote = [(o.id_banco, o.x, o.y) for o in self.organismos if o.id_banco is not None]
@@ -576,8 +594,11 @@ class PlacaBase(tk.Frame):
     # ---------- infecção ----------
 
     def _espalhar_infeccao(self, grade):
-        """Um Infectado que encosta em outro organismo pode passar a infecção."""
-        novos_infectados = []
+        """Um Infectado que encosta em outro organismo pode passar a infecção.
+
+        Quem tem o vírus do Núcleo passa o vírus do Núcleo (cepa nova: Imunidade e Guardião valem metade).
+        """
+        novos_infectados = {}   # organismo -> True se for o vírus do Núcleo
         for (cx, cy), indices_da_celula in grade.items():
             indices_vizinhos = self._vizinhos_da_celula(grade, cx, cy)
             for i in indices_da_celula:
@@ -591,20 +612,39 @@ class PlacaBase(tk.Frame):
                     if outro in novos_infectados or not doente.esta_encostando(outro):
                         continue
                     doente.recarga_contagio = RECARGA_CONTAGIO
-                    chance = modificadores("Infectado")["chance_contagio"] * bau_dados.fator_contagio()
-                    if random.random() < chance and not self._protegido_por_guardiao(outro):
-                        novos_infectados.append(outro)
+                    virus = doente.tem_virus_do_nucleo()
+                    if random.random() < self.chance_de_pegar(outro, virus,
+                                                              modificadores("Infectado")["chance_contagio"]):
+                        novos_infectados[outro] = virus
                     break
-        for organismo in novos_infectados:
-            self._tornar_infectado(organismo)
+        for organismo, virus in novos_infectados.items():
+            self._tornar_infectado(organismo, do_nucleo=virus)
             persistencia.incrementar_estatistica("contagio_total")
             self._mostrar_evento(f"☣️ Contágio: um {organismo.dados_estagio()['nome']} foi infectado")
         if novos_infectados:
             sons.tocar(sons.SOM_CORRUPCAO)
 
-    def _tornar_infectado(self, organismo):
+    def chance_de_pegar(self, organismo, do_nucleo, chance_base):
+        """Chance de um organismo pegar a infecção, já com a Imunidade e o Guardião.
+
+        Contra a infecção comum o Guardião protege por completo; contra o vírus do Núcleo, só pela metade.
+        """
+        if do_nucleo:
+            chance = chance_base * bau_dados.fator_contagio_nucleo()
+            if self._protegido_por_guardiao(organismo):
+                chance *= 0.5
+            return chance
+        if self._protegido_por_guardiao(organismo):
+            return 0.0
+        return chance_base * bau_dados.fator_contagio()
+
+    def _tornar_infectado(self, organismo, do_nucleo=False):
         organismo.comportamento = "Infectado"
         persistencia.atualizar_comportamento(organismo.id_banco, "Infectado")
+        if do_nucleo and organismo.tipo != "fusao":
+            organismo.variante = VARIANTE_VIRUS
+            organismo.doenca = DURACAO_INFECCAO_VIRUS
+            persistencia.atualizar_variante(organismo.id_banco, VARIANTE_VIRUS)
         organismo.redesenhar(self.canvas, self.camera)
 
     # ---------- IAs (liberadas no troféu de Prata) ----------
@@ -881,6 +921,9 @@ class PlacaBase(tk.Frame):
         ]
         if organismo.tipo == "fusao":
             linhas.append(f"Origem: fusão manual (receita {organismo.variante})")
+        if organismo.tem_virus_do_nucleo():
+            linhas.append(f"☣️ Vírus do Núcleo: se cura sozinho em uns {max(1, organismo.doenca // 25)} s "
+                          "(no 1×)")
         janelas.showinfo("Inspeção de Organismo", "\n".join(linhas))
 
     def _infectar(self, organismo):
@@ -898,7 +941,19 @@ class PlacaBase(tk.Frame):
         self._mostrar_evento("Organismo infectado ☣️")
         sons.tocar(sons.SOM_CORRUPCAO)
 
+    def _opcao_destruir(self, organismo):
+        """Item do menu: destruir um Infectado custa Membrana (antes era o jeito grátis de limpar a infecção)."""
+        if organismo.comportamento == "Infectado":
+            return f"💥  Destruir ({bau_dados.CUSTO_DESTRUIR_INFECTADO} ⬡)", self._destruir
+        return "💥  Destruir", self._destruir
+
     def _destruir(self, organismo):
+        if organismo.comportamento == "Infectado":
+            if not persistencia.gastar_membrana(bau_dados.CUSTO_DESTRUIR_INFECTADO):
+                self._mostrar_evento(f"Destruir um Infectado custa {bau_dados.CUSTO_DESTRUIR_INFECTADO} ⬡ "
+                                     "— ou use um 💊 Antídoto")
+                return
+            self._atualizar_membrana()
         self._remover_organismo(organismo)
         persistencia.incrementar_estatistica("destruir_total")
         self._mostrar_evento("Organismo destruído")
@@ -968,8 +1023,10 @@ class PlacaBase(tk.Frame):
         self.canvas.delete("mira")
         if not self._frasco_mirando:
             return
-        raio = bau_dados.raio_frasco() * self.camera.zoom
-        cor = bau_dados.COR_DO_LADO[bau_dados.frasco(self._frasco_mirando)["lado"]]
+        dados = bau_dados.frasco(self._frasco_mirando)
+        # os itens do Núcleo não têm área: a mira é um alvo pequeno
+        raio = (30 if dados.get("no_nucleo") else bau_dados.raio_frasco()) * self.camera.zoom
+        cor = bau_dados.COR_DO_LADO[dados["lado"]]
         self.canvas.create_oval(evento.x - raio, evento.y - raio, evento.x + raio, evento.y + raio,
                                 outline=cor, width=2, dash=(6, 4), tags="mira")
 
@@ -992,14 +1049,34 @@ class PlacaBase(tk.Frame):
 
         crescer()
 
+    def _nucleo_em(self, x, y):
+        """Núcleo Corrompido no ponto (x, y) do mapa. Só a Simulação tem Núcleos."""
+        return None
+
+    def _problema_no_nucleo(self, chave, nucleo):
+        """Texto explicando por que o item não pode ser usado nesse Núcleo (ou None se pode)."""
+        return None
+
     def _usar_frasco(self, x, y):
         chave = self._frasco_mirando
         dados = bau_dados.frasco(chave)
+        alvo = None
+        if dados.get("no_nucleo"):
+            # Película, Glóbulos e Seringa só funcionam em cima de um Núcleo: sem Núcleo, não gasta o item
+            alvo = self._nucleo_em(x, y)
+            problema = "clique em cima de um ☣️ Núcleo Corrompido (na Simulação)." if alvo is None else \
+                self._problema_no_nucleo(chave, alvo)
+            if problema:
+                self._mostrar_evento(f"{dados['emoji']} {problema}")
+                return
         if not bau_dados.gastar_frasco(chave):
             self._cancelar_mira()
             return
-        raio = bau_dados.raio_frasco()
-        resultado = getattr(self, f"_frasco_{chave}")(x, y, raio)
+        if alvo is not None:
+            resultado = getattr(self, f"_frasco_{chave}")(alvo)
+            x, y = alvo.x, alvo.y
+        else:
+            resultado = getattr(self, f"_frasco_{chave}")(x, y, bau_dados.raio_frasco())
         self._efeito_visual(x, y, bau_dados.COR_DO_LADO[dados["lado"]])
         persistencia.incrementar_estatistica("frascos_usados_total")
         persistencia.adicionar_entrada_diario(f"{dados['nome']} usado: {resultado}")
@@ -1039,9 +1116,7 @@ class PlacaBase(tk.Frame):
         curados = 0
         for organismo in self._organismos_na_area(x, y, raio):
             if organismo.comportamento == "Infectado":
-                organismo.comportamento = escolher_comportamento_aleatorio()
-                persistencia.atualizar_comportamento(organismo.id_banco, organismo.comportamento)
-                organismo.redesenhar(self.canvas, self.camera)
+                self._curar(organismo)
                 curados += 1
         return f"{curados} organismo(s) curado(s)."
 
@@ -1063,9 +1138,10 @@ class PlacaBase(tk.Frame):
 
     def _frasco_evolutivo(self, x, y, raio):
         evoluidos = 0
-        for organismo in self._organismos_na_area(x, y, raio):
-            if organismo.estagio >= TOTAL_ESTAGIOS:
-                continue
+        # no máximo 8 por frasco: os mais perto de onde ele caiu
+        area = [o for o in self._organismos_na_area(x, y, raio) if o.estagio < TOTAL_ESTAGIOS]
+        area.sort(key=lambda o: math.hypot(o.x - x, o.y - y))
+        for organismo in area[:bau_dados.EVOLUTIVO_MAXIMO]:
             organismo.estagio += 1
             persistencia.atualizar_estagio(organismo.id_banco, organismo.estagio)
             ganho = self._registrar_descoberta(organismo)

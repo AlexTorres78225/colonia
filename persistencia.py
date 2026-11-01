@@ -231,6 +231,21 @@ def inicializar_banco():
         )
     """)
 
+    # V2: Núcleos Corrompidos da placa (seringas = quantas já levou; ele some na 3ª)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS nucleos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            x REAL NOT NULL,
+            y REAL NOT NULL,
+            seringas INTEGER DEFAULT 0
+        )
+    """)
+
+    # V2: o save da Geladeira guarda a Membrana junto (saves antigos ganham a coluna vazia)
+    colunas_geladeira = [linha["name"] for linha in cursor.execute("PRAGMA table_info(geladeira)").fetchall()]
+    if "membrana" not in colunas_geladeira:
+        cursor.execute("ALTER TABLE geladeira ADD COLUMN membrana INTEGER")
+
     # Manual por ciclo: o que foi descoberto em cada ciclo (nunca é apagado)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS descobertas_ciclo (
@@ -342,6 +357,12 @@ def atualizar_comportamento(organismo_id, comportamento):
     conexao.commit()
 
 
+def atualizar_variante(organismo_id, variante):
+    conexao = conectar()
+    conexao.execute("UPDATE organismos SET variante = ? WHERE id = ?", (variante, organismo_id))
+    conexao.commit()
+
+
 def remover_organismo(organismo_id):
     conexao = conectar()
     conexao.execute("DELETE FROM organismos WHERE id = ?", (organismo_id,))
@@ -374,17 +395,44 @@ def limpar_colonia(local=None):
     conexao.commit()
 
 
+# ---------- Núcleos Corrompidos (V2) ----------
+
+def listar_nucleos():
+    conexao = conectar()
+    return [dict(linha) for linha in conexao.execute("SELECT * FROM nucleos").fetchall()]
+
+
+def criar_nucleo(x, y):
+    conexao = conectar()
+    cursor = conexao.execute("INSERT INTO nucleos (x, y, seringas) VALUES (?, ?, 0)", (x, y))
+    conexao.commit()
+    return cursor.lastrowid
+
+
+def atualizar_seringas_nucleo(nucleo_id, seringas):
+    conexao = conectar()
+    conexao.execute("UPDATE nucleos SET seringas = ? WHERE id = ?", (seringas, nucleo_id))
+    conexao.commit()
+
+
+def remover_nucleo(nucleo_id):
+    conexao = conectar()
+    conexao.execute("DELETE FROM nucleos WHERE id = ?", (nucleo_id,))
+    conexao.commit()
+
+
 # ---------- geladeira ----------
 
 def salvar_slot_geladeira(slot, nome):
+    """Congela a colônia E a Membrana do momento: ao descongelar, as duas voltam juntas."""
     organismos = listar_organismos()
     dados_json = json.dumps(organismos)
     conexao = conectar()
     conexao.execute(
-        "INSERT INTO geladeira (slot, nome, dados_json, data_salvo) VALUES (?, ?, ?, ?) "
+        "INSERT INTO geladeira (slot, nome, dados_json, data_salvo, membrana) VALUES (?, ?, ?, ?, ?) "
         "ON CONFLICT(slot) DO UPDATE SET nome = excluded.nome, dados_json = excluded.dados_json, "
-        "data_salvo = excluded.data_salvo",
-        (slot, nome, dados_json, datetime.now().isoformat()),
+        "data_salvo = excluded.data_salvo, membrana = excluded.membrana",
+        (slot, nome, dados_json, datetime.now().isoformat(), obter_membrana()),
     )
     conexao.commit()
 
@@ -395,6 +443,8 @@ def carregar_slot_geladeira(slot):
     if not linha:
         return None
     organismos = json.loads(linha["dados_json"])
+    if linha["membrana"] is not None:   # saves da versão antiga não guardavam a Membrana
+        definir_membrana(linha["membrana"])
     limpar_colonia()
     for organismo in organismos:
         conexao.execute(
@@ -524,18 +574,20 @@ def zerar_estatistica(chave):
     conexao.commit()
 
 
-def recomecar_ciclo(membrana_inicial, membrana_que_fica=0):
+def recomecar_ciclo(membrana_inicial, membrana_que_fica=0, frascos_que_passam=3):
     """Troféu conquistado: começa um ciclo novo.
 
-    Zera: organismos (placa, fusão e mutação), Geladeira e os estágios descobertos do ciclo.
+    Zera: organismos (placa, fusão e mutação), Núcleos, Geladeira e os estágios descobertos do ciclo.
     A Membrana volta ao valor inicial + a parte que o jogador leva (membrana_que_fica).
-    Fica: troféus, conquistas, upgrades, frascos, diário, estatísticas e o Manual dos ciclos anteriores.
+    Os frascos passam só até frascos_que_passam de cada tipo.
+    Fica: troféus, conquistas, upgrades, diário, estatísticas e o Manual dos ciclos anteriores.
     """
     conexao = conectar()
     conexao.execute("DELETE FROM organismos")
+    conexao.execute("DELETE FROM nucleos")
     conexao.execute("DELETE FROM geladeira")
     conexao.execute("UPDATE estagios_descobertos SET descoberto = 0")
-    conexao.execute("UPDATE estatisticas SET valor = 0 WHERE chave = 'evolutivos_comprados_ciclo'")
+    conexao.execute("UPDATE inventario SET quantidade = MIN(quantidade, ?)", (frascos_que_passam,))
     conexao.commit()
     definir_membrana(membrana_inicial + membrana_que_fica)
 

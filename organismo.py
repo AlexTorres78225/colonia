@@ -8,6 +8,11 @@ import recursos
 
 DURACAO_SELO_NOVO = 10  # segundos que o ❓ de espécie nova fica visível
 
+# V2: quem pega o vírus de um Núcleo Corrompido fica com a variante "virus".
+# Essa infecção passa sozinha depois de um tempo (a do Frasco Corrompido, da Praga e do "Infectar" não passa).
+VARIANTE_VIRUS = "virus"
+DURACAO_INFECCAO_VIRUS = 1500   # quadros: uns 60 segundos no 1×
+
 # Aparência dos selos: (cor da bolinha, cor do símbolo)
 ESTILO_SELOS = {
     "?": ("#f2c94c", "#1a1a1a"),
@@ -32,6 +37,7 @@ class Organismo:
         self.recarga_contagio = 0
         self.recarga_caca = 0          # Predador: espera entre uma "refeição" e outra
         self.hospedeiro_id = None      # Simbionte: id do organismo que ele segue
+        self.doenca = DURACAO_INFECCAO_VIRUS if self.tem_virus_do_nucleo() else 0   # quadros até a cura
         self._fora_da_tela = False
         self.novo_ate = 0
         self.angulo = random.uniform(0, 2 * math.pi)
@@ -52,6 +58,9 @@ class Organismo:
 
     def velocidade_efetiva(self):
         return modificadores(self.comportamento)["velocidade_mult"] * self.velocidade_mod
+
+    def tem_virus_do_nucleo(self):
+        return self.comportamento == "Infectado" and self.variante == VARIANTE_VIRUS
 
     def sofreu_interferencia(self):
         return self.tipo == "fusao" or not modificadores(self.comportamento)["natural"]

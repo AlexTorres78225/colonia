@@ -42,8 +42,8 @@ COMPORTAMENTOS = {
         "movimento": "zigue",
         "natural": False,
         "chance_contagio": 0.25,
-        "descricao": "Só surge quando o cientista usa 'Infectar'. Anda em zigue-zague, não se reproduz "
-                     "e pode passar a infecção para quem encostar nele.",
+        "descricao": "Surge pelo 'Infectar', pelos frascos vilões ou pelos vírus de um Núcleo Corrompido. Anda em "
+                     "zigue-zague, não se reproduz, não se funde e pode passar a infecção para quem encostar nele.",
     },
     "Mutação": {
         "emoji": "🧬",

@@ -13,6 +13,7 @@ PASTA_ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "assets"
 PASTA_ORGANISMOS = os.path.join(PASTA_ASSETS, "organismos")
 PASTA_FUNDOS = os.path.join(PASTA_ASSETS, "fundos")
 PASTA_ICONES = os.path.join(PASTA_ASSETS, "icones")
+PASTA_NUCLEO = os.path.join(PASTA_ASSETS, "nucleo")   # V2: desenhos do Núcleo Corrompido e dos itens
 
 _CACHE_REDIMENSIONADAS = {}
 _CACHE_ORIGINAIS = {}
@@ -80,6 +81,11 @@ def _imagem_redimensionada(caminho, tamanho_pixels):
 def imagem_organismo_redimensionada(estagio, tamanho_pixels):
     caminho = os.path.join(PASTA_ORGANISMOS, f"estagio_{arquivo_do_estagio(estagio):02d}.png")
     return _imagem_redimensionada(caminho, tamanho_pixels)
+
+
+def imagem_nucleo_redimensionada(nome, tamanho_pixels):
+    """nucleo.png, pelicula.png, globulo.png, seringa.png ou virus.png (None se o desenho ainda não existe)."""
+    return _imagem_redimensionada(os.path.join(PASTA_NUCLEO, f"{nome}.png"), tamanho_pixels)
 
 
 # Qual desenho de fusão usar para cada receita (o comportamento exigido pela receita).
