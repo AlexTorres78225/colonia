@@ -101,11 +101,11 @@ class TelaBau(tk.Frame):
 
     def _cartao_upgrade(self, pai, dados, saldo):
         if not bau_dados.liberado(dados):
-            return self._cartao_trancado(pai, dados, 178, 154)
+            return self._cartao_trancado(pai, dados, 178, 172)
         nivel = bau_dados.nivel(dados["chave"])
         maximo = nivel >= bau_dados.NIVEL_MAXIMO
         cor = COR_CARTAO_MAXIMO if maximo else COR_CARTAO
-        cartao = tk.Frame(pai, bg=cor, width=178, height=154,
+        cartao = tk.Frame(pai, bg=cor, width=178, height=172,
                           highlightthickness=1, highlightbackground=tema.LAB["borda"])
         cartao.pack_propagate(False)
 
