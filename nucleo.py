@@ -26,7 +26,7 @@ QUADROS_POR_SEGUNDO = 25
 RAIO_NUCLEO = round(tamanho_do_estagio(TOTAL_ESTAGIOS) * 1.5)   # maior que a Forma de Vida Suprema
 SERINGAS_PARA_DESTRUIR = 3
 ESPERA_PRIMEIRO_NUCLEO = 60 * QUADROS_POR_SEGUNDO    # o primeiro aparece 1 minuto depois de abrir a placa
-ESPERA_ENTRE_NUCLEOS = 90 * QUADROS_POR_SEGUNDO      # depois, um novo a cada minuto e meio (até o máximo)
+ESPERA_ENTRE_NUCLEOS = 90 * QUADROS_POR_SEGUNDO      # depois de destruídos, voltam (todos juntos) em 1 min e meio
 INTERVALO_ONDA = 10 * QUADROS_POR_SEGUNDO            # cada Núcleo solta uma onda de vírus a cada 10 s
 MAXIMO_DE_VIRUS = 80
 
@@ -201,12 +201,18 @@ class GerenciadorNucleos:
         if self.espera_novo > 0:
             return
         self.espera_novo = ESPERA_ENTRE_NUCLEOS
-        x, y = self._lugar_livre()
-        nucleo = Nucleo(persistencia.criar_nucleo(x, y), x, y)
-        self.nucleos.append(nucleo)
-        persistencia.incrementar_estatistica("nucleos_surgidos_total")
-        persistencia.adicionar_entrada_diario("☣️ Um Núcleo Corrompido surgiu na placa.")
-        self.tela._mostrar_evento("☣️ Um NÚCLEO CORROMPIDO surgiu na placa! Veja no minimapa.")
+        # nascem todos juntos: 1 por troféu (Bronze 1, Prata 2, Ouro 3, Diamante 4)
+        quantos = bau_dados.maximo_de_nucleos() - len(self.nucleos)
+        for _ in range(quantos):
+            x, y = self._lugar_livre()
+            self.nucleos.append(Nucleo(persistencia.criar_nucleo(x, y), x, y))
+            persistencia.incrementar_estatistica("nucleos_surgidos_total")
+        if quantos == 1:
+            persistencia.adicionar_entrada_diario("☣️ Um Núcleo Corrompido surgiu na placa.")
+            self.tela._mostrar_evento("☣️ Um NÚCLEO CORROMPIDO surgiu na placa! Veja no minimapa.")
+        else:
+            persistencia.adicionar_entrada_diario(f"☣️ {quantos} Núcleos Corrompidos surgiram na placa.")
+            self.tela._mostrar_evento(f"☣️ {quantos} NÚCLEOS CORROMPIDOS surgiram na placa! Veja no minimapa.")
         sons.tocar(sons.SOM_CORRUPCAO)
 
     def _lugar_livre(self):

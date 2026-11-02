@@ -54,7 +54,7 @@ def texto_como_jogar():
         f"{bau_dados.CUSTO_DESTRUIR_INFECTADO} ⬡; o 💊 Antídoto cura de graça.",
         "",
         "☣️ NÚCLEOS CORROMPIDOS  (a partir do troféu de 🌲 Madeira)",
-        "• Um vírus gigante e parado aparece num lugar sorteado da placa: 1 por troféu, até 4 ao mesmo tempo.",
+        "• Vírus gigantes e parados aparecem JUNTOS em lugares sorteados: 1 por troféu, até 4. Destruídos, voltam em 1 min e meio.",
         "• A cada 10 segundos ele solta uma onda de vírus pequenos que caçam e infectam os organismos.",
         "  Esse vírus é uma cepa nova: a 🛡 Imunidade e o Guardião só valem metade contra ele.",
         "  Quem pega o vírus do Núcleo se cura sozinho depois de uns 60 segundos (no 1×).",
