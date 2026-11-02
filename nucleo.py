@@ -201,7 +201,7 @@ class GerenciadorNucleos:
         if self.espera_novo > 0:
             return
         self.espera_novo = ESPERA_ENTRE_NUCLEOS
-        # nascem todos juntos: 1 por troféu (Bronze 1, Prata 2, Ouro 3, Diamante 4)
+        # nascem todos juntos: 1 por troféu (Madeira 1, Bronze 2, Prata 3, Ouro e Diamante 4)
         quantos = bau_dados.maximo_de_nucleos() - len(self.nucleos)
         for _ in range(quantos):
             x, y = self._lugar_livre()
