@@ -12,7 +12,7 @@ import bau_dados
 from conquistas import avaliar_e_desbloquear
 from evolucao_dados import ESPECIES_NOVAS
 
-VERSAO = "1.1"
+VERSAO = "2.0"
 
 # (nome, ícone, módulo, classe) — as classes são buscadas na hora (ver _preparar_visual)
 TELAS = [
