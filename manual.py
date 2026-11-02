@@ -7,7 +7,8 @@ import bau_dados
 from organismo import Organismo
 from comportamento import COMPORTAMENTOS
 from evolucao_dados import (TOTAL_ESTAGIOS, BLOCOS, dados_completos_estagio, receitas_fusao_do_estagio,
-                            tamanho_do_estagio, estagios_com_trofeus)
+                            tamanho_do_estagio, ESPECIES_NOVAS, TOTAL_ESPECIES)
+from conquistas import especies_vistas
 
 # clima "mesa do cientista": madeira, couro e papel (tema.MESA)
 COR_FUNDO = tema.MESA["fundo"]
@@ -19,11 +20,11 @@ COR_TEXTO_SUAVE = tema.MESA["texto_suave"]
 COLUNAS = 5
 
 
-def desenhar_organismo(canvas, estagio, x, y, raio):
-    """Desenha o organismo do estágio usando o mesmo PNG da simulação."""
+def desenhar_organismo(canvas, estagio, x, y, raio, ciclo=None):
+    """Desenha o organismo do estágio usando o mesmo PNG da simulação (ciclo: a mistura de espécies daquele ciclo)."""
     organismo = Organismo(
         id_banco=None, estagio=estagio, x=x, y=y, velocidade_mod=1.0,
-        tamanho_mod=raio / tamanho_do_estagio(estagio), comportamento="Calmo",
+        tamanho_mod=raio / tamanho_do_estagio(estagio), comportamento="Calmo", ciclo=ciclo,
     )
     organismo.criar_no_canvas(canvas)
     return organismo
@@ -37,15 +38,13 @@ def desenhar_silhueta(canvas, x, y, raio):
 def texto_como_jogar():
     linhas = [
         "🎯 OBJETIVO",
-        "Levar a colônia até a Forma de Vida Suprema (no ciclo 1 são 25 estágios). Cada vez que você chega lá,",
+        f"Levar a colônia pelos {TOTAL_ESTAGIOS} estágios até a Forma de Vida Suprema. Cada vez que você chega lá,",
         "ganha um 🏆 troféu (Madeira → Bronze → Prata → Ouro → Diamante) e começa um ciclo novo.",
         "",
         "🧫 A PLACA (tela Simulação)",
         "• Dois organismos do MESMO estágio que se encostam se fundem e viram o estágio seguinte (+3 ⬡).",
         "• Cada evolução deixa o organismo maior: os primeiros estágios são pequenos e os últimos são grandes.",
-        "• Grupos do ciclo 1: " + "  •  ".join(f"{b['emoji']} {b['nome']} ({b['inicio']}–{b['fim']})"
-                                               for b in BLOCOS if not b["trofeu"] and b["fim"] < TOTAL_ESTAGIOS)
-        + "  •  👑 Forma de Vida Suprema (25)",
+        "• Grupos do ciclo 1: " + "  •  ".join(f"{b['emoji']} {b['nome']} ({b['inicio']}–{b['fim']})" for b in BLOCOS),
         "• “+ Organismo” custa o número do estágio que nasce (estágio 1 = 1 ⬡, estágio 4 = 4 ⬡).",
         "  Ficou sem Membrana? Clique num organismo: ele “brota” +1 ⬡.",
         "  Sem Membrana e com a placa vazia, o “+ Organismo” sai de graça (no estágio 1).",
@@ -56,12 +55,12 @@ def texto_como_jogar():
         f"{bau_dados.CUSTO_DESTRUIR_INFECTADO} ⬡; o 💊 Antídoto cura de graça.",
         "",
         "🦠 ESPÉCIES NOVAS  (uma leva a cada troféu)",
-        "• Cada troféu faz aparecer 15 espécies novas ENTRE a Célula Adaptada e a Suprema. O caminho fica mais",
-        "  longo a cada ciclo, mas a 👑 Forma de Vida Suprema é sempre a última.",
-        "• " + "  •  ".join(f"{bau_dados.TROFEUS[b['trofeu'] - 1]['emoji']} {b['emoji']} {b['nome']}"
-                         for b in BLOCOS if b["trofeu"]),
-        "• O número do estágio conta só as espécies que já existem no seu ciclo (no ciclo 1 a Suprema é a 25ª).",
-        "  No Manual de Coleção, cada ciclo mostra só as espécies dele.",
+        "• Todo ciclo tem 25 estágios e a 👑 Forma de Vida Suprema é sempre o último.",
+        "• Do ciclo 2 em diante, 15 dos 24 lugares são espécies NOVAS, só daquele ciclo, misturadas com 9 antigas.",
+        "  A ordem muda: o estágio 3 de um ciclo pode ser outra espécie no ciclo seguinte. Veja no Manual.",
+        "• " + "  •  ".join(f"{bau_dados.TROFEUS[trofeu - 1]['emoji']} → {emoji} {grupo} (ciclo {trofeu + 1})"
+                         for trofeu, (emoji, grupo, _lista) in ESPECIES_NOVAS.items()),
+        f"• São {TOTAL_ESPECIES} espécies no total. Ver todas rende a conquista Biólogo Completo.",
         "",
         "☣️ NÚCLEOS CORROMPIDOS  (a partir do troféu de 🌲 Madeira)",
         "• Vírus gigantes e parados aparecem JUNTOS em lugares sorteados: 1 por troféu, até 4. Destruídos, voltam em 1 min e meio.",
@@ -175,16 +174,11 @@ class TelaManual(tk.Frame):
         self.rotulo_progresso.pack(pady=(0, 6))
 
         # faixa que anda para o lado: um Canvas com um Frame dentro (cada ciclo é uma página)
-        # V2: com até 85 espécies a página fica alta, então rola também para baixo (rodinha do mouse)
         self.barra = tk.Scrollbar(self, orient="horizontal")
         self.barra.pack(side="bottom", fill="x", padx=14, pady=(0, 8))
-        self.barra_vertical = tk.Scrollbar(self, orient="vertical")
-        self.barra_vertical.pack(side="right", fill="y", pady=4)
-        self.canvas_faixa = tk.Canvas(self, bg=COR_FUNDO, highlightthickness=0, xscrollcommand=self.barra.set,
-                                      yscrollcommand=self.barra_vertical.set)
+        self.canvas_faixa = tk.Canvas(self, bg=COR_FUNDO, highlightthickness=0, xscrollcommand=self.barra.set)
         self.canvas_faixa.pack(fill="both", expand=True, padx=14, pady=4)
         self.barra.config(command=self.canvas_faixa.xview)
-        self.barra_vertical.config(command=self.canvas_faixa.yview)
         self.faixa = tk.Frame(self.canvas_faixa, bg=COR_FUNDO)
         self.canvas_faixa.create_window(0, 0, window=self.faixa, anchor="nw")
         self.faixa.bind("<Configure>", lambda evento: self.canvas_faixa.config(
@@ -195,37 +189,32 @@ class TelaManual(tk.Frame):
 
     # ---------- arrastar para o lado ----------
 
-    def _ligar_arraste(self, widget, estagio=None):
+    def _ligar_arraste(self, widget, alvo=None):
         widget.bind("<ButtonPress-1>", self._comecar_arraste)
         widget.bind("<B1-Motion>", self._arrastar)
-        widget.bind("<ButtonRelease-1>", lambda evento: self._soltar(estagio))
+        widget.bind("<ButtonRelease-1>", lambda evento: self._soltar(alvo))
         widget.bind("<MouseWheel>", self._rodinha)
 
     def _comecar_arraste(self, evento):
         self._arraste_inicio = evento.x_root
         self._arrastou = False
-        self.canvas_faixa.scan_mark(evento.x_root, evento.y_root)
+        self.canvas_faixa.scan_mark(evento.x_root, 0)
 
     def _arrastar(self, evento):
         if self._arraste_inicio is None:
             return
         if abs(evento.x_root - self._arraste_inicio) > 6:
             self._arrastou = True
-        self.canvas_faixa.scan_dragto(evento.x_root, evento.y_root, gain=1)
+        self.canvas_faixa.scan_dragto(evento.x_root, 0, gain=1)
 
-    def _soltar(self, estagio):
-        # um clique sem arrastar num organismo descoberto abre a ficha dele
-        if estagio is not None and not self._arrastou:
-            self._mostrar_detalhe(estagio)
+    def _soltar(self, alvo):
+        # um clique sem arrastar num organismo descoberto abre a ficha dele (alvo = (estágio, ciclo))
+        if alvo is not None and not self._arrastou:
+            self._mostrar_detalhe(alvo)
         self._arraste_inicio = None
 
     def _rodinha(self, evento):
-        # rodinha = sobe e desce; Shift + rodinha = vai para o lado (outro ciclo)
-        direcao = -1 if evento.delta > 0 else 1
-        if evento.state & 0x0001:
-            self.canvas_faixa.xview_scroll(direcao, "units")
-        else:
-            self.canvas_faixa.yview_scroll(direcao * 3, "units")
+        self.canvas_faixa.xview_scroll(-1 if evento.delta > 0 else 1, "units")
 
     def _pular_pagina(self, direcao):
         if not self._paginas:
@@ -247,7 +236,7 @@ class TelaManual(tk.Frame):
         ciclo_atual = persistencia.ciclo_atual()
         estado = (ciclo_atual, tuple(sorted((c, tuple(sorted(e))) for c, e in por_ciclo.items())))
         if estado == self._ultimo_estado:
-            return  # nada mudou: não precisa redesenhar as fichas (até 275 nos 5 ciclos)
+            return  # nada mudou: não precisa redesenhar as 125 fichas (25 por ciclo)
         self._ultimo_estado = estado
 
         for widget in self.faixa.winfo_children():
@@ -255,12 +244,10 @@ class TelaManual(tk.Frame):
         self._desenhos = []
         self._paginas = []
 
-        total_geral = len(set().union(*por_ciclo.values())) if por_ciclo else 0
         self.rotulo_progresso.config(
-            text=f"Ciclo atual: {len(por_ciclo.get(ciclo_atual, ()))} / {bau_dados.total_visivel()}   •   "
-                 f"Espécies já vistas: {total_geral} / {TOTAL_ESTAGIOS}   •   "
-                 "Arraste (ou ◀ ▶) para ver os outros ciclos   •   Rodinha: sobe e desce   •   "
-                 "Clique num organismo para ver a ficha")
+            text=f"Ciclo atual: {len(por_ciclo.get(ciclo_atual, ()))} / {TOTAL_ESTAGIOS}   •   "
+                 f"Espécies já vistas: {len(especies_vistas())} / {TOTAL_ESPECIES}   •   "
+                 "Arraste para o lado (ou ◀ ▶) para ver os outros ciclos   •   Clique num organismo para ver a ficha")
 
         for ciclo in range(1, persistencia.TOTAL_CICLOS + 1):
             self._montar_pagina(ciclo, por_ciclo.get(ciclo, set()), ciclo_atual)
@@ -279,9 +266,8 @@ class TelaManual(tk.Frame):
         pagina.pack(side="left", anchor="n")
         self._paginas.append(pagina)
         self._ligar_arraste(pagina)
-        especies = estagios_com_trofeus(ciclo - 1)   # cada ciclo tem as espécies dos troféus de antes dele
-        cabecalho = tk.Label(pagina, text=f"{trofeu['emoji']}  Ciclo {ciclo}  —  "
-                                          f"{len(descobertos & set(especies))} / {len(especies)}   •   {situacao}",
+        cabecalho = tk.Label(pagina, text=f"{trofeu['emoji']}  Ciclo {ciclo}  —  {len(descobertos)} / "
+                                          f"{TOTAL_ESTAGIOS}   •   {situacao}",
                              fg=trofeu["cor"] if ciclo <= ciclo_atual else COR_TEXTO_SUAVE, bg=tema.MESA["painel"],
                              font=("Segoe UI", 11, "bold"), pady=4)
         cabecalho.pack(fill="x", pady=(0, 6))
@@ -290,61 +276,61 @@ class TelaManual(tk.Frame):
         grade.pack()
         self._ligar_arraste(grade)
 
-        for posicao, estagio in enumerate(especies, 1):
-            dados = dados_completos_estagio(estagio)
+        for estagio in range(1, TOTAL_ESTAGIOS + 1):
+            dados = dados_completos_estagio(estagio, ciclo)
             descoberto = estagio in descobertos
             cor = COR_DESCOBERTO if descoberto else COR_BLOQUEADO
 
             celula = tk.Frame(grade, bg=cor, width=self.LARGURA_CELULA, height=self.ALTURA_CELULA,
                                highlightbackground=COR_BORDA_CELULA, highlightthickness=1)
-            celula.grid(row=(posicao - 1) // COLUNAS, column=(posicao - 1) % COLUNAS, padx=4, pady=4)
+            celula.grid(row=(estagio - 1) // COLUNAS, column=(estagio - 1) % COLUNAS, padx=4, pady=4)
             celula.grid_propagate(False)
             celula.pack_propagate(False)
 
             desenho = tk.Canvas(celula, width=70, height=62, bg=cor, highlightthickness=0)
             desenho.pack(pady=(4, 0))
             if descoberto:
-                self._desenhos.append(desenhar_organismo(desenho, estagio, 35, 31, 27))
+                self._desenhos.append(desenhar_organismo(desenho, estagio, 35, 31, 27, ciclo))
                 texto_nome = dados["nome"]
-                texto_bloco = f"#{posicao:02d} • {dados['bloco']}"
+                texto_bloco = f"#{estagio:02d} • {dados['bloco']}"
             else:
                 desenhar_silhueta(desenho, 35, 31, 22)
                 texto_nome = "???"
-                texto_bloco = f"#{posicao:02d}"
+                texto_bloco = f"#{estagio:02d}"
 
             tk.Label(celula, text=texto_nome, bg=cor, fg=COR_TEXTO, font=("Segoe UI", 8, "bold"),
                      wraplength=160).pack()
             tk.Label(celula, text=texto_bloco, bg=cor, fg=COR_TEXTO_SUAVE, font=("Segoe UI", 7)).pack()
 
-            alvo = estagio if descoberto else None
+            alvo = (estagio, ciclo) if descoberto else None
             self._ligar_arraste(celula, alvo)
             for filho in celula.winfo_children():
                 self._ligar_arraste(filho, alvo)
                 if descoberto:
                     filho.config(cursor="hand2")
 
-    def _mostrar_detalhe(self, estagio):
-        dados = dados_completos_estagio(estagio)
-        receitas = receitas_fusao_do_estagio(estagio)
+    def _mostrar_detalhe(self, alvo):
+        estagio, ciclo = alvo
+        dados = dados_completos_estagio(estagio, ciclo)
+        receitas = receitas_fusao_do_estagio(estagio, ciclo)
         texto_receitas = "\n".join(
             f"  • {r['nome']}\n     (um dos dois precisa ser {COMPORTAMENTOS[r['comportamento_exigido']]['emoji']} "
             f"{r['comportamento_exigido']})" for r in receitas
         )
 
         janela = tk.Toplevel(self)
-        janela.title(f"Estágio {bau_dados.numero_visivel(estagio)} — {dados['nome']}")
+        janela.title(f"Estágio {estagio} — {dados['nome']}")
         janela.configure(bg=COR_FUNDO)
         janela.resizable(False, False)
         janela.transient(self.winfo_toplevel())
 
         desenho = tk.Canvas(janela, width=200, height=200, bg=COR_DESCOBERTO, highlightthickness=0)
         desenho.pack(padx=20, pady=(20, 10))
-        janela._organismo = desenhar_organismo(desenho, estagio, 100, 100, 80)
+        janela._organismo = desenhar_organismo(desenho, estagio, 100, 100, 80, ciclo)
 
         tk.Label(janela, text=f"{dados['emoji']}  {dados['nome']}", fg=COR_TEXTO, bg=COR_FUNDO,
                  font=("Segoe UI", 13, "bold")).pack()
-        tk.Label(janela, text=f"Estágio {bau_dados.numero_visivel(estagio)} de {bau_dados.total_visivel()}   •   "
-                              f"Grupo: {dados['bloco']}   •   "
+        tk.Label(janela, text=f"Ciclo {ciclo}   •   Estágio {estagio} de {TOTAL_ESTAGIOS}   •   Grupo: {dados['bloco']}   •   "
                               f"Tamanho: {round(dados['tamanho'] * 2)} px",
                  fg=COR_TEXTO_SUAVE, bg=COR_FUNDO, font=("Segoe UI", 9)).pack(pady=(2, 10))
         tk.Label(janela, text=f"Receitas de fusão manual:\n{texto_receitas}", fg=COR_TEXTO, bg=COR_FUNDO,

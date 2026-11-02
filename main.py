@@ -10,6 +10,7 @@ import sons
 import tema
 import bau_dados
 from conquistas import avaliar_e_desbloquear
+from evolucao_dados import ESPECIES_NOVAS
 
 VERSAO = "1.1"
 
@@ -161,9 +162,6 @@ class App(tk.Tk):
         persistencia.incrementar_estatistica("trofeus")
         persistencia.incrementar_estatistica(f"trofeu_{ja_tinha + 1}_quando", int(time.time()))
         persistencia.adicionar_entrada_diario(f"🏆 Troféu de {dados['nome']} conquistado! Liberou: {dados['libera']}.")
-        if bau_dados.novas_especies_do_trofeu(ja_tinha + 1):
-            persistencia.adicionar_entrada_diario(f"🦠 {bau_dados.novas_especies_do_trofeu(ja_tinha + 1)} espécies "
-                                                  "novas entraram entre a Célula Adaptada e a Suprema.")
         avaliar_e_desbloquear({})
         sons.tocar(sons.SOM_TROFEU)
 
@@ -208,9 +206,10 @@ class App(tk.Tk):
                       "A sua colônia continua do jeito que está: jogue livremente."]
             frase_final, texto_botao = "🍀 Obrigado por jogar, cientista!", "Continuar ▶"
         else:
-            novas = bau_dados.novas_especies_do_trofeu(numero)
+            novas = ESPECIES_NOVAS.get(numero)
             linhas = [f"🔄 O jogo vai reiniciar no ciclo {numero + 1}, com cores novas.",
-                      f"🦠 {novas} espécies novas apareceram entre a Célula Adaptada e a Suprema!",
+                      (f"🦠 {len(novas[2])} espécies novas ({novas[0]} {novas[1]}) vão aparecer, misturadas com as antigas!"
+                       if novas else ""),
                       "🧫 A colônia e a Geladeira começam do zero.",
                       "",
                       "Você leva com você:",

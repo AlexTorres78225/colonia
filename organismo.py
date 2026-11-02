@@ -24,7 +24,7 @@ COR_IA = "#3d8bfd"
 
 class Organismo:
     def __init__(self, id_banco, estagio, x, y, velocidade_mod, tamanho_mod,
-                 comportamento, tipo="normal", local="placa", variante=""):
+                 comportamento, tipo="normal", local="placa", variante="", ciclo=None):
         self.id_banco = id_banco
         self.estagio = estagio
         self.x = x
@@ -35,6 +35,7 @@ class Organismo:
         self.tipo = tipo
         self.local = local
         self.variante = variante or ""
+        self.ciclo = ciclo   # None = o ciclo em jogo (o Manual passa outro para mostrar ciclos antigos)
         self.recarga = 0
         self.recarga_contagio = 0
         self.recarga_caca = 0          # Predador: espera entre uma "refeição" e outra
@@ -53,7 +54,7 @@ class Organismo:
     # ---------- dados ----------
 
     def dados_estagio(self):
-        return dados_completos_estagio(self.estagio)
+        return dados_completos_estagio(self.estagio, self.ciclo)
 
     def raio(self):
         return tamanho_do_estagio(self.estagio) * self.tamanho_mod * modificadores(self.comportamento)["tamanho_mult"]
@@ -153,7 +154,7 @@ class Organismo:
         if self.tipo == "fusao":
             imagem = recursos.imagem_fusao_redimensionada(self.variante, tamanho_pixels)
         if imagem is None:
-            imagem = recursos.imagem_organismo_redimensionada(self.estagio, tamanho_pixels)
+            imagem = recursos.imagem_organismo_redimensionada(self.estagio, tamanho_pixels, self.ciclo)
         return imagem
 
     def criar_no_canvas(self, canvas, camera=CAMERA_PADRAO):

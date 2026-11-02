@@ -244,7 +244,7 @@ class PlacaBase(tk.Frame):
         self._marcar_especie_nova(organismo)
         ganho = bau_dados.ganhar(bau_dados.recompensa_especie_nova())
         persistencia.adicionar_entrada_diario(f"Nova espécie descoberta: {nome_do_estagio(organismo.estagio)} "
-                                              f"(estágio {bau_dados.numero_visivel(organismo.estagio)}).")
+                                              f"(estágio {organismo.estagio}).")
         if organismo.estagio >= TOTAL_ESTAGIOS:
             self._agendar_trofeu()
         return ganho
@@ -725,11 +725,11 @@ class PlacaBase(tk.Frame):
                 continue
             simbionte.hospedeiro_id = novo.id_banco
             if simbionte.estagio < TOTAL_ESTAGIOS:
-                simbionte.estagio = bau_dados.proximo_estagio(simbionte.estagio)
+                simbionte.estagio += 1
                 persistencia.atualizar_estagio(simbionte.id_banco, simbionte.estagio)
                 self._registrar_descoberta(simbionte)
                 simbionte.redesenhar(self.canvas, self.camera)
-                self._mostrar_evento(f"🤝 O Simbionte subiu junto com o hospedeiro: estágio {bau_dados.numero_visivel(simbionte.estagio)}")
+                self._mostrar_evento(f"🤝 O Simbionte subiu junto com o hospedeiro: estágio {simbionte.estagio}")
 
     # ---------- avisos e conquistas ----------
 
@@ -918,7 +918,7 @@ class PlacaBase(tk.Frame):
         dados = organismo.dados_estagio()
         comportamento = modificadores(organismo.comportamento)
         linhas = [
-            f"Estágio {bau_dados.numero_visivel(organismo.estagio)}: {dados['nome']} ({dados['bloco']})",
+            f"Estágio {organismo.estagio}: {dados['nome']} ({dados['bloco']})",
             f"Comportamento: {comportamento['emoji']} {organismo.comportamento}",
             f"   {comportamento['descricao']}",
             f"Velocidade: {round(organismo.velocidade_efetiva(), 2)}",
@@ -1147,7 +1147,7 @@ class PlacaBase(tk.Frame):
         area = [o for o in self._organismos_na_area(x, y, raio) if o.estagio < TOTAL_ESTAGIOS]
         area.sort(key=lambda o: math.hypot(o.x - x, o.y - y))
         for organismo in area[:bau_dados.EVOLUTIVO_MAXIMO]:
-            organismo.estagio = bau_dados.proximo_estagio(organismo.estagio)
+            organismo.estagio += 1
             persistencia.atualizar_estagio(organismo.id_banco, organismo.estagio)
             ganho = self._registrar_descoberta(organismo)
             if ganho:
@@ -1170,7 +1170,7 @@ class PlacaBase(tk.Frame):
         regrediram = 0
         for organismo in self._organismos_na_area(x, y, raio):
             if organismo.estagio > 1:
-                organismo.estagio = bau_dados.estagio_anterior(organismo.estagio)
+                organismo.estagio -= 1
                 persistencia.atualizar_estagio(organismo.id_banco, organismo.estagio)
                 ganho = self._registrar_descoberta(organismo)
                 if ganho:

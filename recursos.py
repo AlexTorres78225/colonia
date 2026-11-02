@@ -78,8 +78,8 @@ def _imagem_redimensionada(caminho, tamanho_pixels):
     return imagem_tk
 
 
-def imagem_organismo_redimensionada(estagio, tamanho_pixels):
-    caminho = os.path.join(PASTA_ORGANISMOS, f"estagio_{arquivo_do_estagio(estagio):02d}.png")
+def imagem_organismo_redimensionada(estagio, tamanho_pixels, ciclo=None):
+    caminho = os.path.join(PASTA_ORGANISMOS, f"estagio_{arquivo_do_estagio(estagio, ciclo):02d}.png")
     return _imagem_redimensionada(caminho, tamanho_pixels)
 
 

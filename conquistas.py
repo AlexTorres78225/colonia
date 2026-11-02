@@ -1,4 +1,5 @@
-from evolucao_dados import TOTAL_ESTAGIOS, nome_do_estagio, todas_receitas_fusao, BLOCOS
+from evolucao_dados import (TOTAL_ESTAGIOS, nome_do_estagio, todas_receitas_fusao, BLOCOS, ESPECIES_NOVAS,
+                            TOTAL_ESPECIES, especie)
 from comportamento import LISTA_COMPORTAMENTOS
 
 MARCOS_MERGE = [1, 5, 10, 25, 50, 100, 250, 500, 1000, 2000]
@@ -22,7 +23,7 @@ CHAVES_LABORATORIO = ["arrastar_total", "coletar_total", "infectar_total", "dest
 # Geladeira: além das 12 de cada slot, 5 com desafio de verdade
 CONQUISTAS_GELADEIRA_EXTRAS = [
     ("geladeira_arca", "Arca de Noé", "Congele uma colônia com 100 organismos ou mais."),
-    ("geladeira_amostra_rara", "Amostra rara", "Congele uma colônia que tenha uma Célula Primordial ou algo mais evoluído."),
+    ("geladeira_amostra_rara", "Amostra rara", "Congele uma colônia que tenha um organismo do estágio 20 ou maior."),
     ("geladeira_cofre_cheio", "Cofre cheio", "Tenha os 6 compartimentos da geladeira ocupados ao mesmo tempo."),
     ("geladeira_ressurreicao", "Ressurreição", "Descongele uma colônia quando a placa estiver vazia."),
     ("geladeira_viajante", "Viajante do tempo", "Descongele colônias 10 vezes."),
@@ -37,8 +38,8 @@ def gerar_lista_conquistas():
     for estagio in range(1, TOTAL_ESTAGIOS + 1):
         conquistas.append({
             "chave": f"descoberta_estagio_{estagio}",
-            "nome": f"Primeira observação: {nome_do_estagio(estagio)}",
-            "descricao": f"Observe pela primeira vez um(a) {nome_do_estagio(estagio)}.",
+            "nome": f"Primeira observação: {nome_do_estagio(estagio, 1)}",
+            "descricao": f"Observe pela primeira vez um organismo no estágio {estagio}.",
             "categoria": "Descoberta",
         })
 
@@ -58,7 +59,7 @@ def gerar_lista_conquistas():
             "categoria": "Reprodução",
         })
 
-    for receita in todas_receitas_fusao():
+    for receita in todas_receitas_fusao(1):
         conquistas.append({
             "chave": f"fusao_manual_{receita['chave']}",
             "nome": f"Fusão dirigida: {receita['nome']}",
@@ -107,8 +108,8 @@ def gerar_lista_conquistas():
     for estagio in range(1, TOTAL_ESTAGIOS + 1):
         conquistas.append({
             "chave": f"populacao_estagio_{estagio}",
-            "nome": f"Colônia estabelecida: {nome_do_estagio(estagio)}",
-            "descricao": f"Tenha {MARCOS_POPULACAO_ESTAGIO} organismos {nome_do_estagio(estagio)} ao mesmo tempo.",
+            "nome": f"Colônia estabelecida: {nome_do_estagio(estagio, 1)}",
+            "descricao": f"Tenha {MARCOS_POPULACAO_ESTAGIO} organismos no estágio {estagio} ao mesmo tempo.",
             "categoria": "População por Estágio",
         })
 
@@ -119,6 +120,22 @@ def gerar_lista_conquistas():
             "descricao": f"Descubra todos os estágios do grupo {bloco['nome']}.",
             "categoria": "Colecionador",
         })
+
+    # V2: uma conquista para cada espécie nova (aparecem nos ciclos depois de cada troféu)
+    for trofeu, (_emoji, grupo, lista) in ESPECIES_NOVAS.items():
+        for nome, arquivo in lista:
+            conquistas.append({
+                "chave": f"descoberta_especie_{arquivo}",
+                "nome": f"Primeira observação: {nome}",
+                "descricao": f"Encontre esta espécie do grupo {grupo} (aparece no ciclo {trofeu + 1}).",
+                "categoria": "Descoberta",
+            })
+    conquistas.append({
+        "chave": "colecionador_especies",
+        "nome": "Biólogo Completo",
+        "descricao": f"Veja todas as {TOTAL_ESPECIES} espécies do jogo (as de todos os ciclos).",
+        "categoria": "Colecionador",
+    })
 
     conquistas.append({
         "chave": "colecionador_total",
@@ -208,6 +225,19 @@ def total_de_conquistas():
     return len(gerar_lista_conquistas())
 
 
+ARQUIVOS_DO_CICLO_1 = {especie(e, 1)[1] for e in range(1, TOTAL_ESTAGIOS + 1)}
+
+
+def especies_vistas():
+    """Os arquivos (= espécies) que o jogador já viu, somando todos os ciclos do Manual."""
+    import persistencia
+    vistas = set()
+    for ciclo, estagios in persistencia.listar_descobertas_por_ciclo().items():
+        for estagio in estagios:
+            vistas.add(especie(estagio, ciclo)[1])
+    return vistas
+
+
 def avaliar_e_desbloquear(contexto):
     import persistencia
     import bau_dados
@@ -256,6 +286,13 @@ def avaliar_e_desbloquear(contexto):
 
     if all(descobertos.get(e, False) for e in range(1, TOTAL_ESTAGIOS + 1)):
         tentar("colecionador_total")
+
+    vistas = especies_vistas()
+    for arquivo in vistas:
+        if arquivo not in ARQUIVOS_DO_CICLO_1:
+            tentar(f"descoberta_especie_{arquivo}")
+    if len(vistas) >= TOTAL_ESPECIES:
+        tentar("colecionador_especies")
 
     populacao_atual = contexto.get("populacao_atual", 0)
     for marco in MARCOS_POPULACAO:
