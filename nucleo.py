@@ -367,8 +367,8 @@ class GerenciadorNucleos:
         for soldado in self.soldados:
             x, y = camera.para_tela(soldado.x, soldado.y)
             r = max(2.5, RAIO_SOLDADO * zoom)
-            if not self._fora_da_tela(x, y, r * 2) and not self._imagem(canvas, "anticorpo", x, y, r * 1.6):
-                self._desenhar_anticorpo(canvas, x, y, r * 1.6, soldado.angulo, zoom)
+            if not self._fora_da_tela(x, y, r * 2) and not self._imagem(canvas, "anticorpo", x, y, r):
+                self._desenhar_anticorpo(canvas, x, y, r, soldado.angulo, zoom)
         canvas.tag_raise("minimapa")
 
     def _desenhar_anticorpo(self, canvas, x, y, tamanho, angulo, zoom):
@@ -377,7 +377,7 @@ class GerenciadorNucleos:
         cauda = (x - frente_x * tamanho, y - frente_y * tamanho)
         bracos = [(x + math.cos(angulo + abertura) * tamanho, y + math.sin(angulo + abertura) * tamanho)
                   for abertura in (-0.6, 0.6)]
-        for cor, largura in ((CORES["globulo_borda"], max(3, 3.5 * zoom)), (CORES["globulo"], max(1.5, 1.8 * zoom))):
+        for cor, largura in ((CORES["globulo_borda"], max(2, 2.5 * zoom)), (CORES["globulo"], max(1, 1.2 * zoom))):
             canvas.create_line(*cauda, x, y, fill=cor, width=largura, capstyle="round", tags="nucleo")
             for ponta in bracos:
                 canvas.create_line(x, y, *ponta, fill=cor, width=largura, capstyle="round", tags="nucleo")
