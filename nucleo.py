@@ -10,7 +10,7 @@ Aparece 1 por troféu (até 4). O jogador tem três armas, compradas no Baú:
 
 Tudo aqui conta em quadros da simulação (1 quadro = 40 ms no 1×), então a pausa e o ⏩ valem.
 Os desenhos do Alex entram sozinhos quando existirem em assets/nucleo/ (nucleo.png, pelicula.png,
-globulo.png, seringa.png e virus.png); enquanto não existem, o jogo desenha formas simples.
+globulo.png, seringa.png, virus.png e anticorpo.png); enquanto não existem, o jogo desenha formas simples.
 """
 import math
 import random
@@ -367,10 +367,20 @@ class GerenciadorNucleos:
         for soldado in self.soldados:
             x, y = camera.para_tela(soldado.x, soldado.y)
             r = max(2.5, RAIO_SOLDADO * zoom)
-            if not self._fora_da_tela(x, y, r):
-                canvas.create_oval(x - r, y - r, x + r, y + r, fill=CORES["globulo"],
-                                   outline=CORES["globulo_borda"], tags="nucleo")
+            if not self._fora_da_tela(x, y, r * 2) and not self._imagem(canvas, "anticorpo", x, y, r * 1.6):
+                self._desenhar_anticorpo(canvas, x, y, r * 1.6, soldado.angulo, zoom)
         canvas.tag_raise("minimapa")
+
+    def _desenhar_anticorpo(self, canvas, x, y, tamanho, angulo, zoom):
+        """Anticorpo em forma de Y (como os de verdade), com os braços virados para onde ele anda."""
+        frente_x, frente_y = math.cos(angulo), math.sin(angulo)
+        cauda = (x - frente_x * tamanho, y - frente_y * tamanho)
+        bracos = [(x + math.cos(angulo + abertura) * tamanho, y + math.sin(angulo + abertura) * tamanho)
+                  for abertura in (-0.6, 0.6)]
+        for cor, largura in ((CORES["globulo_borda"], max(3, 3.5 * zoom)), (CORES["globulo"], max(1.5, 1.8 * zoom))):
+            canvas.create_line(*cauda, x, y, fill=cor, width=largura, capstyle="round", tags="nucleo")
+            for ponta in bracos:
+                canvas.create_line(x, y, *ponta, fill=cor, width=largura, capstyle="round", tags="nucleo")
 
     def _fora_da_tela(self, x, y, folga):
         camera = self.tela.camera
