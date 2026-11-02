@@ -235,7 +235,7 @@ class TelaSimulacao(PlacaBase):
         }
         habilidades_novas = herdar_habilidades(habilidades_a, habilidades_b)
 
-        novo_estagio = organismo_a.estagio + 1
+        novo_estagio = bau_dados.proximo_estagio(organismo_a.estagio)
         x = (organismo_a.x + organismo_b.x) / 2 + random.uniform(-10, 10)
         y = (organismo_a.y + organismo_b.y) / 2 + random.uniform(-10, 10)
         ids_que_sumiram = {organismo_a.id_banco, organismo_b.id_banco}

@@ -12,6 +12,7 @@ from placa import PlacaBase
 RECARGA_APOS_REPRODUZIR = 150
 RECARGA_APOS_TENTATIVA = 25
 PENALIDADE_POR_ESTAGIO = 0.02   # organismos maiores se reproduzem mais devagar
+LIMITE_PENALIDADE = 24          # V2: com 85 estágios, a penalidade para no estágio 25 (senão ninguém reproduzia)
 
 
 def _habilidades_de(organismo):
@@ -65,7 +66,7 @@ class TelaFusao(PlacaBase):
         # Catalisador (Baú) soma chance; cada troféu tira um pouco (o jogo fica mais difícil a cada ciclo);
         # e quanto maior o estágio, mais devagar ele se reproduz (-2% por estágio, como na natureza)
         chance_reproducao = ((chance_a + chance_b) / 2 + bau_dados.bonus_reproducao()
-                             - bau_dados.penalidade_reproducao() - PENALIDADE_POR_ESTAGIO * (organismo_a.estagio - 1))
+                             - bau_dados.penalidade_reproducao() - PENALIDADE_POR_ESTAGIO * min(organismo_a.estagio - 1, LIMITE_PENALIDADE))
         chance_reproducao = max(0.05, min(0.95, chance_reproducao))
         espera = round(RECARGA_APOS_REPRODUZIR * bau_dados.fator_recarga())
 
@@ -81,7 +82,7 @@ class TelaFusao(PlacaBase):
         habilidades_novas = herdar_habilidades(_habilidades_de(organismo_a), _habilidades_de(organismo_b))
         estagio = organismo_a.estagio
         if estagio < TOTAL_ESTAGIOS and random.random() < bau_dados.chance_heranca_forte():
-            estagio += 1   # Herança Forte (Baú, troféu de Ouro): às vezes o filhote nasce 1 estágio acima
+            estagio = bau_dados.proximo_estagio(estagio)   # Herança Forte (Baú, troféu de Ouro): às vezes o filhote nasce 1 estágio acima
         novo = self._criar_e_mostrar(
             estagio,
             x=(organismo_a.x + organismo_b.x) / 2 + random.uniform(-15, 15),

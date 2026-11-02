@@ -66,7 +66,7 @@ class TelaMutacao(PlacaBase):
     def _resolver_interacao(self, organismo_a, organismo_b):
         if organismo_a.estagio >= TOTAL_ESTAGIOS:
             return
-        novo_estagio = min(TOTAL_ESTAGIOS, organismo_a.estagio + SALTO_DAS_MUTACOES)
+        novo_estagio = bau_dados.proximo_estagio(organismo_a.estagio, SALTO_DAS_MUTACOES)
         x = (organismo_a.x + organismo_b.x) / 2
         y = (organismo_a.y + organismo_b.y) / 2
         habilidades = _habilidades_de(organismo_a)

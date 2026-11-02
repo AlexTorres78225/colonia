@@ -4,7 +4,7 @@ import os
 import sys
 from datetime import datetime
 from conquistas import gerar_lista_conquistas
-from evolucao_dados import TOTAL_ESTAGIOS
+from evolucao_dados import TOTAL_ESTAGIOS, ESTAGIOS_DO_CICLO_1, estagios_com_trofeus
 
 # Dois tipos de banco:
 #   contas.db           -> só as contas (usuário, senha com hash, pergunta de segurança)
@@ -154,6 +154,33 @@ def fechar_conexao():
         _conexao_save = None
 
 
+def _migrar_suprema_para_o_fim(cursor):
+    """V2: entraram 60 espécies antes da Suprema. Num save da V1 a Suprema era o estágio 25;
+    agora ela é o último (85). Roda uma vez só por save (marca "versao_estagios" nas estatísticas)."""
+    linha = cursor.execute("SELECT valor FROM estatisticas WHERE chave = 'versao_estagios'").fetchone()
+    if linha and linha[0] >= TOTAL_ESTAGIOS:
+        return
+    antigo, novo = ESTAGIOS_DO_CICLO_1, TOTAL_ESTAGIOS
+    if not linha:   # save da V1 (ou save novo, vazio: aí nada muda)
+        cursor.execute("UPDATE organismos SET estagio = ? WHERE estagio = ?", (novo, antigo))
+        cursor.execute("UPDATE estagios_descobertos SET estagio = ? WHERE estagio = ?", (novo, antigo))
+        cursor.execute("UPDATE descobertas_ciclo SET estagio = ? WHERE estagio = ?", (novo, antigo))
+        for velha, nova in ((f"descoberta_estagio_{antigo}", f"descoberta_estagio_{novo}"),
+                            (f"populacao_estagio_{antigo}", f"populacao_estagio_{novo}"),
+                            (f"fusao_manual_fusao_{antigo}_1", f"fusao_manual_fusao_{novo}_1")):
+            if cursor.execute("SELECT 1 FROM conquistas WHERE chave = ?", (velha,)).fetchone():
+                cursor.execute("DELETE FROM conquistas WHERE chave = ?", (nova,))
+                cursor.execute("UPDATE conquistas SET chave = ? WHERE chave = ?", (nova, velha))
+        for slot, dados_json in cursor.execute("SELECT slot, dados_json FROM geladeira").fetchall():
+            organismos = json.loads(dados_json or "[]")
+            for organismo in organismos:
+                if organismo.get("estagio") == antigo:
+                    organismo["estagio"] = novo
+            cursor.execute("UPDATE geladeira SET dados_json = ? WHERE slot = ?", (json.dumps(organismos), slot))
+    cursor.execute("INSERT OR REPLACE INTO estatisticas (chave, valor) VALUES ('versao_estagios', ?)",
+                   (TOTAL_ESTAGIOS,))
+
+
 def inicializar_banco():
     conexao = conectar()
     cursor = conexao.cursor()
@@ -255,6 +282,8 @@ def inicializar_banco():
         )
     """)
 
+    _migrar_suprema_para_o_fim(cursor)
+
     lista = gerar_lista_conquistas()
     for conquista in lista:
         cursor.execute(
@@ -280,7 +309,7 @@ def inicializar_banco():
     conexao.commit()
     ciclo = ciclo_atual()
     for ciclo_fechado in range(1, ciclo):
-        for estagio in range(1, TOTAL_ESTAGIOS + 1):
+        for estagio in estagios_com_trofeus(ciclo_fechado - 1):   # só as espécies que existiam naquele ciclo
             cursor.execute("INSERT OR IGNORE INTO descobertas_ciclo (ciclo, estagio) VALUES (?, ?)",
                            (ciclo_fechado, estagio))
     cursor.execute("INSERT OR IGNORE INTO descobertas_ciclo (ciclo, estagio) "

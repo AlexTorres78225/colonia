@@ -22,7 +22,7 @@ CHAVES_LABORATORIO = ["arrastar_total", "coletar_total", "infectar_total", "dest
 # Geladeira: além das 12 de cada slot, 5 com desafio de verdade
 CONQUISTAS_GELADEIRA_EXTRAS = [
     ("geladeira_arca", "Arca de Noé", "Congele uma colônia com 100 organismos ou mais."),
-    ("geladeira_amostra_rara", "Amostra rara", "Congele uma colônia que tenha um organismo do estágio 20 ou maior."),
+    ("geladeira_amostra_rara", "Amostra rara", "Congele uma colônia que tenha uma Célula Primordial ou algo mais evoluído."),
     ("geladeira_cofre_cheio", "Cofre cheio", "Tenha os 6 compartimentos da geladeira ocupados ao mesmo tempo."),
     ("geladeira_ressurreicao", "Ressurreição", "Descongele uma colônia quando a placa estiver vazia."),
     ("geladeira_viajante", "Viajante do tempo", "Descongele colônias 10 vezes."),
@@ -38,7 +38,7 @@ def gerar_lista_conquistas():
         conquistas.append({
             "chave": f"descoberta_estagio_{estagio}",
             "nome": f"Primeira observação: {nome_do_estagio(estagio)}",
-            "descricao": f"Observe pela primeira vez um organismo no estágio {estagio}.",
+            "descricao": f"Observe pela primeira vez um(a) {nome_do_estagio(estagio)}.",
             "categoria": "Descoberta",
         })
 
@@ -108,7 +108,7 @@ def gerar_lista_conquistas():
         conquistas.append({
             "chave": f"populacao_estagio_{estagio}",
             "nome": f"Colônia estabelecida: {nome_do_estagio(estagio)}",
-            "descricao": f"Tenha {MARCOS_POPULACAO_ESTAGIO} organismos no estágio {estagio} ao mesmo tempo.",
+            "descricao": f"Tenha {MARCOS_POPULACAO_ESTAGIO} organismos {nome_do_estagio(estagio)} ao mesmo tempo.",
             "categoria": "População por Estágio",
         })
 

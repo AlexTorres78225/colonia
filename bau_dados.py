@@ -12,6 +12,7 @@ import random
 
 import persistencia
 from comportamento import LISTA_IAS, CHANCE_DE_NASCER_IA
+from evolucao_dados import TOTAL_ESTAGIOS, estagios_com_trofeus, trofeu_do_estagio
 
 NIVEL_MAXIMO = 5
 TROFEU_DO_NIVEL = {4: 3, 5: 4}   # nível 4 pede o troféu de Prata (3º); nível 5, o de Ouro (4º)
@@ -161,6 +162,47 @@ _FRASCO_POR_CHAVE = {f["chave"]: f for f in FRASCOS}
 
 def trofeus():
     return persistencia.obter_estatistica("trofeus")
+
+
+# ---------- V2: espécies liberadas pelos troféus ----------
+# As espécies trancadas são "puladas": no ciclo 1 a Célula Adaptada (24) se funde direto na Suprema.
+
+def estagio_liberado(estagio):
+    return trofeu_do_estagio(estagio) <= trofeus()
+
+
+def estagios_liberados():
+    return estagios_com_trofeus(trofeus())
+
+
+def proximo_estagio(estagio, passos=1):
+    """O estágio que vem depois (pulando os trancados). Nunca passa da Suprema."""
+    liberados = estagios_liberados()
+    posicao = numero_visivel(estagio) - 1
+    return liberados[min(len(liberados) - 1, posicao + passos)]
+
+
+def estagio_anterior(estagio):
+    liberados = estagios_liberados()
+    return liberados[max(0, numero_visivel(estagio) - 2)]
+
+
+def numero_visivel(estagio):
+    """O número que o jogador vê: a posição entre as espécies liberadas (a Suprema é a 25ª no ciclo 1)."""
+    liberados = estagios_liberados()
+    if estagio in liberados:
+        return liberados.index(estagio) + 1
+    # espécie trancada (ex.: veio de uma Geladeira de outro ciclo): conta a posição pelo número real
+    return sum(1 for e in liberados if e < estagio) + 1
+
+
+def total_visivel():
+    return len(estagios_liberados())
+
+
+def novas_especies_do_trofeu(numero_trofeu):
+    """Quantas espécies o troféu número N (1 = Madeira) abre."""
+    return len(estagios_com_trofeus(numero_trofeu)) - len(estagios_com_trofeus(numero_trofeu - 1))
 
 
 def ciclo_atual():
